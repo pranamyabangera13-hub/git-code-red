@@ -223,3 +223,35 @@
   color: #647568;
   line-height: 1.5;
 }
+/* Photo preview */
+
+.photo-preview {
+  margin-top: 12px;
+}
+
+.photo-preview p {
+  color: #193d29;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.preview-image {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid #dce6d9;
+  background: #f8faf7;
+}
+
+.remove-photo-button {
+  margin-top: 12px;
+  padding: 9px 14px;
+  border: 1px solid #dce6d9;
+  border-radius: 8px;
+  background: white;
+  color: #193d29;
+  cursor: pointer;
+}

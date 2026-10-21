@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./ReportForm.css";
 
 export default function ReportForm() {
   const [submitted, setSubmitted] = useState(false);
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
+  const [error, setError] = useState("");
 
   const [form, setForm] = useState({
     need: "",
@@ -17,60 +18,135 @@ export default function ReportForm() {
 
   function handleChange(event) {
     const { name, value } = event.target;
+
     setForm((previous) => ({
       ...previous,
       [name]: value,
     }));
   }
+
   function handlePhotoChange(event) {
-  const file = event.target.files?.[0];
+    const file = event.target.files?.[0];
 
-  if (!file) return;
+    if (!file) return;
 
-  if (!file.type.startsWith("image/")) {
-    alert("Please select an image file.");
-    event.target.value = "";
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Please choose an image smaller than 5 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    if (photoPreview) {
+      URL.revokeObjectURL(photoPreview);
+    }
+
+    setPhoto(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  }
+
+  function removePhoto() {
+    if (photoPreview) {
+      URL.revokeObjectURL(photoPreview);
+    }
+
+    setPhoto(null);
+    setPhotoPreview("");
+
+    const input = document.getElementById("personPhoto");
+
+    if (input) {
+      input.value = "";
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview) {
+        URL.revokeObjectURL(photoPreview);
+      }
+    };
+  }, [photoPreview]);
+
+  async function handleSubmit(event) {
+  event.preventDefault();
+
+  const requiredFields = [
+    { value: form.need, label: "type of help" },
+    { value: form.location.trim(), label: "location" },
+    { value: form.description.trim(), label: "description" },
+  ];
+
+  const emptyFields = requiredFields.filter(
+    (field) => !field.value
+  );
+
+  if (emptyFields.length > 0) {
+    setError(
+      `Please fill in the following required fields: ${emptyFields
+        .map((field) => field.label)
+        .join(", ")}.`
+    );
     return;
   }
 
-  if (file.size > 5 * 1024 * 1024) {
-    alert("Please choose an image smaller than 5 MB.");
-    event.target.value = "";
+  if (form.description.trim().length < 10) {
+    setError(
+      "Please describe the situation in at least 10 characters."
+    );
     return;
   }
 
-  if (photoPreview) {
-  URL.revokeObjectURL(photoPreview);
-}
+  setError("");
 
-setPhoto(file);
-setPhotoPreview(URL.createObjectURL(file));
-}
-function removePhoto() {
-  if (photoPreview) {
-    URL.revokeObjectURL(photoPreview);
-  }
+  try {
+    const response = await fetch(
+      "http://localhost:5000/api/reports",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          need: form.need,
+          location: form.location.trim(),
+          description: form.description.trim(),
+          urgency: form.urgency,
+          reporterName: form.reporterName || "",
+          contact: form.contact || "",
+        }),
+      }
+    );
 
-  setPhoto(null);
-  setPhotoPreview("");
+    const result = await response.json();
 
-  const input = document.getElementById("personPhoto");
+    if (!response.ok) {
+      throw new Error(result.message || "Failed to submit report.");
+    }
 
-  if (input) {
-    input.value = "";
-  }
-}
-
-  function handleSubmit(event) {
-    event.preventDefault();
     setSubmitted(true);
+  } catch (error) {
+    setError(
+      error.message ||
+        "Could not connect to the Sahaya server. Please try again."
+    );
   }
+}
 
   return (
     <section className="report-page">
       <div className="report-card">
-        <p className="report-eyebrow">SAHAYA · COMMUNITY CARE</p>
+        <p className="report-eyebrow">
+          SAHAYA · COMMUNITY CARE
+        </p>
+
         <h1>Report Someone in Need</h1>
+
         <p className="report-intro">
           Your kindness can connect someone with the
           support they deserve. Tell us a little about
@@ -80,11 +156,12 @@ function removePhoto() {
         {submitted ? (
           <div className="report-success" role="status">
             <h2>Thank you for caring ❤️</h2>
+
             <p>
-              Your form has been completed, but this
-              demo has not sent or saved your report.
-              A backend is needed to submit it securely.
-            </p>
+  Your report has been submitted successfully.
+  Thank you for helping connect someone with care. ❤️
+</p>
+
             <button
               type="button"
               onClick={() => setSubmitted(false)}
@@ -93,11 +170,16 @@ function removePhoto() {
             </button>
           </div>
         ) : (
-          
           <form onSubmit={handleSubmit}>
+          {error && (
+  <p className="report-error" role="alert">
+    {error}
+  </p>
+)}
             <label htmlFor="need">
-              What help is needed? *`
-            </label>`
+              What help is needed? *
+            </label>
+
             <select
               id="need"
               name="need"
@@ -124,6 +206,7 @@ function removePhoto() {
             <label htmlFor="urgency">
               How urgent is the situation? *
             </label>
+
             <select
               id="urgency"
               name="urgency"
@@ -139,6 +222,7 @@ function removePhoto() {
             <label htmlFor="location">
               General location *
             </label>
+
             <input
               id="location"
               name="location"
@@ -152,6 +236,7 @@ function removePhoto() {
             <label htmlFor="description">
               Describe the situation *
             </label>
+
             <textarea
               id="description"
               name="description"
@@ -173,6 +258,7 @@ function removePhoto() {
             <label htmlFor="reporterName">
               Your name (optional)
             </label>
+
             <input
               id="reporterName"
               name="reporterName"
@@ -185,6 +271,7 @@ function removePhoto() {
             <label htmlFor="contact">
               Your contact details (optional)
             </label>
+
             <input
               id="contact"
               name="contact"
@@ -193,41 +280,53 @@ function removePhoto() {
               placeholder="Phone number or email"
               maxLength={150}
             />
+
             {/* Photo upload section */}
-<div className="form-group">
-  <label htmlFor="personPhoto">
-    Upload a photo or take a picture
-  </label>
+            <div className="form-group">
+              <label htmlFor="personPhoto">
+                Upload a photo or take a picture
+              </label>
 
-  <input
-    id="personPhoto"
-    name="personPhoto"
-    type="file"
-    accept="image/*"
-    capture="environment"
-    onchange={handlePhotoChange}
-  />
- </div>
- {photoPreview && (
-  <div className="photo-preview">
-    <p>Selected photo preview</p>
+              <input
+                id="personPhoto"
+                name="personPhoto"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handlePhotoChange}
+              />
 
-    <img
-      src={photoPreview}
-      alt="Selected report"
-      className="preview-image"
-    />
+              <small>
+                Choose an image up to 5 MB.
+                Only share a person's photo when appropriate
+                and with their permission where possible.
+              </small>
 
-    <button
-      type="button"
-      className="remove-photo-button"
-      onClick={removePhoto}
-    >
-      Remove photo ✕
-    </button>
-  </div>
-)}
-  <button className="report-submit" type="submit">
+              {photoPreview && (
+                <div className="photo-preview">
+                  <p>Selected photo preview</p>
+
+                  <img
+                    src={photoPreview}
+                    alt="Selected report photo"
+                    className="preview-image"
+                  />
+
+                  <button
+                    type="button"
+                    className="remove-photo-button"
+                    onClick={removePhoto}
+                  >
+                    Remove photo ✕
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <button
+              className="report-submit"
+              type="submit"
+            >
               Submit Report →
             </button>
 
