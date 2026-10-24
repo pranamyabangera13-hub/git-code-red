@@ -1,9 +1,23 @@
+require("dotenv").config();
+const { createClient } = require("@supabase/supabase-js");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
 
 const app = express();
 const PORT = 5000;
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
+console.log("Supabase URL loaded:", !!process.env.SUPABASE_URL);
+console.log("Supabase key loaded:", !!process.env.SUPABASE_KEY);
+
+console.log(
+  "Backend project:",
+  new URL(process.env.SUPABASE_URL).hostname
+);
 
 app.use(cors());
 app.use(express.json());
@@ -26,8 +40,8 @@ app.get("/", (req, res) => {
   });
 });
 
-app.post("/api/reports", (req, res, next) => {
-  upload.single("personPhoto")(req, res, (err) => {
+app.post("/api/reports", async(req, res, next) => {
+  upload.single("personPhoto")(req, res, async (err) => {
     if (err) return next(err);
 
     const {
@@ -73,19 +87,37 @@ app.post("/api/reports", (req, res, next) => {
         message: "Please select valid report options.",
       });
     }
+    
+    console.log("Report status being sent:", "Pending");
+    
+    console.log("Supabase client role:", "anon (publishable key)");
+console.log("Status:", "Pending");
+    const { data, error } = await supabase
+      .from("reports")
+      .insert([
+        {
+          help_type: need,
+          location,
+          description,
+          urgency,
+          reporter_name: reporterName || "",
+          reporter_contact: contact || "",
+          photo_url: null,
+          status: "Pending",
+        },
+      ])
+      .select();
+
+    if (error) {
+      console.error("Supabase error:", error);
+      return res.status(500).json({
+        message:error.message || "Failed to save the report.",
+      });
+    }
 
     res.status(201).json({
-      message:
-        "Report received successfully! Permanent storage is not configured yet.",
-      report: {
-        need,
-        location,
-        description,
-        urgency,
-        reporterName: reporterName || "",
-        contact: contact || "",
-        photoReceived: Boolean(req.file),
-      },
+      message: "Report saved successfully!",
+      report: data[0],
     });
   });
 });
