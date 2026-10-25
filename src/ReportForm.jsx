@@ -105,28 +105,33 @@ export default function ReportForm() {
   setError("");
 
   try {
+    const reportData = new FormData();
+
+    reportData.append("need", form.need);
+    reportData.append("location", form.location.trim());
+    reportData.append("description", form.description.trim());
+    reportData.append("urgency", form.urgency);
+    reportData.append("reporterName", form.reporterName.trim());
+    reportData.append("contact", form.contact.trim());
+
+    if (photo) {
+      reportData.append("personPhoto", photo);
+    }
+
     const response = await fetch(
       "http://localhost:5000/api/reports",
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          need: form.need,
-          location: form.location.trim(),
-          description: form.description.trim(),
-          urgency: form.urgency,
-          reporterName: form.reporterName || "",
-          contact: form.contact || "",
-        }),
+        body: reportData,
       }
     );
 
     const result = await response.json();
 
     if (!response.ok) {
-      throw new Error(result.message || "Failed to submit report.");
+      throw new Error(
+        result.message || "Failed to submit report."
+      );
     }
 
     setSubmitted(true);
